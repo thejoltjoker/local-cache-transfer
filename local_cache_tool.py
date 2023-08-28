@@ -82,24 +82,25 @@ def get_total_files(paths: list[Path]):
 class CopyThread(QThread):
     progress_update = pyqtSignal(int)
 
-    def __init__(self, source_paths: list, source_root: Path, destination_root: Path):
+    def __init__(self, source_paths: list, source_root: Path, destination_root: Path, rename_source=False):
         super().__init__()
         self.source_paths = source_paths
         self.source_root = source_root
         self.destination_root = destination_root
+        self.rename_source = rename_source
         self.start_time = time.time()
 
     def run(self):
         total_files = get_total_files(self.source_paths)
         copied_files = 0.0001
-        transfer_percentage = copied_files / total_files
+        transfer_percentage = (copied_files / total_files) * 100
         # Reset timer
         self.start_time = time.time()
 
         for source in self.source_paths:
             logging.info(f'Processing {source}')
             source = Path(source)
-            # self.progress_update.emit(transfer_percentage)
+            self.progress_update.emit(transfer_percentage)
 
             # Create parent folder
             destination = self.destination_root / source.relative_to(self.source_root)
@@ -139,7 +140,8 @@ class CopyThread(QThread):
                 copied_files += 1
 
             # Rename original to show that it's using local files
-            source.rename(source.parent / f'_{source.name}')
+            if self.rename_source:
+                source.rename(source.parent / f'_{source.name}')
 
         self.progress_update.emit(100)  # Signal completion
 
